@@ -55,6 +55,116 @@ This project leverages advanced deep learning methodologies to perform semantic 
 | Tensorflow | Optimizing the model weights           |
 | Pygame     | Manual Control                         |
 
+## Getting Started
+
+### Prerequisites
+
+- **CARLA simulator** (0.9.x). Download a release from the [CARLA releases page](https://github.com/carla-simulator/carla/releases) and extract it anywhere.
+- **Python** at a version supported by your CARLA release (the `carla` PyPI wheel must match the simulator version you installed).
+- A GPU is strongly recommended for both the simulator and model training.
+
+### 1. Install the Python dependencies
+
+From the repository root:
+
+```bash
+python -m venv .venv
+```
+
+```bash
+# Windows
+.venv\Scripts\activate
+# Linux / macOS
+source .venv/bin/activate
+```
+
+```bash
+pip install pygame numpy carla tensorflow matplotlib opencv-python
+```
+
+Pin `carla` to the same version as your simulator, e.g. `pip install carla==0.9.15`. The list of packages also lives in [`src/requirements.txt`](./src/requirements.txt).
+
+> **Nix users:** `nix develop` (or `direnv allow`) enters a devshell with the project's formatters and git hooks. It does **not** provide the Python packages above; install those with `pip` as shown.
+
+### 2. Start the CARLA server
+
+Launch the simulator from wherever you extracted it. It listens on `127.0.0.1:2000` by default, which is what the scripts expect.
+
+```bash
+# Windows
+CarlaUE4.exe
+```
+
+```bash
+# Linux
+./CarlaUE4.sh
+```
+
+Every script accepts `--host` and `--port` if your server runs elsewhere.
+
+### 3. Run the scripts
+
+The scripts use package-relative imports, so run them as modules **from the repository root** with `python -m src.<script>`.
+
+#### Multi-sensor grid demo
+
+Spawns a Tesla Model 3 fitted with four RGB cameras, a LiDAR and a semantic LiDAR, and shows all feeds in a 2×3 Pygame grid.
+
+```bash
+python -m src.basic_environment_with_sensors
+```
+
+Press **Esc** or **Q** to quit. Useful options: `--res 1920x1080`, `--async` (default is synchronous mode).
+
+#### Manual control
+
+Drives a vehicle that is **already spawned** in the simulator (it looks for a `*model3*` blueprint, so start the sensor demo above in another terminal first, or spawn a vehicle yourself).
+
+```bash
+python -m src.control_window
+```
+
+| Key              | Action          |
+| ---------------- | --------------- |
+| **W** / **↑**    | Throttle        |
+| **S** / **↓**    | Brake           |
+| **A** / **←**    | Steer left      |
+| **D** / **→**    | Steer right     |
+| **Space**        | Hand brake      |
+
+Close the window to stop. Use `--vehicle-filter PATTERN` to control a different vehicle.
+
+#### CNN self-steering (autonomous lane following)
+
+Spawns a vehicle on a road in **Town05**, feeds the front camera through the trained CNN and steers from its predicted angle. The script needs a trained model (see the next section) and defaults to `./model/lane_model`.
+
+```bash
+python -m src.model_self_steer --town Town05
+```
+
+Press **Q** in the camera window to stop. Pass `--model PATH` to point at a model stored elsewhere.
+
+### 4. Train the lane model (optional)
+
+The two notebooks in `src/` cover data exploration and model training:
+
+- [`carlaCNN.ipynb`](./src/carlaCNN.ipynb): connects to a running CARLA server, loads Town05, spawns traffic and streams camera footage. A good place to see the sensors in action.
+- [`model_build.ipynb`](./src/model_build.ipynb): trains the steering CNN on labelled lane images and saves it with `model.save(...)`.
+
+```bash
+pip install jupyter
+```
+
+```bash
+jupyter notebook src/model_build.ipynb
+```
+
+The training notebook reads PNG images from `archive/train_label/` relative to the notebook, where each filename ends in the steering angle (e.g. `..._frame_0_label.png`). It saves the trained model to `model/lane_model` **next to the notebook**, i.e. `src/model/lane_model`. Either move that directory to the repository root or run the self-steering script with:
+
+```bash
+python -m src.model_self_steer --town Town05 --model src/model/lane_model
+```
+
 ---
 
 ### TL;DR [Video Presentation](https://drive.google.com/drive/folders/1te0HDyyQaOI47RANxhuFZEUii8KMuGsd?usp=share_link)
